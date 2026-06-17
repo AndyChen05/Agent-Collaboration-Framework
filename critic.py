@@ -31,9 +31,10 @@ client = AsyncOpenAI(
     base_url="https://api.deepseek.com",
 )
 
-# Critic can observe but not modify — exclude write_file
-CRITIC_TOOL_SCHEMAS = [s for s in TOOL_SCHEMAS if s["function"]["name"] != "write_file"]
-CRITIC_TOOL_REGISTRY = {k: v for k, v in TOOL_REGISTRY.items() if k != "write_file"}
+# Critic observes — it must not modify, delete, append, or run arbitrary shell commands
+_CRITIC_EXCLUDED = {"write_file", "append_to_file", "delete_file", "run_shell"}
+CRITIC_TOOL_SCHEMAS = [s for s in TOOL_SCHEMAS if s["function"]["name"] not in _CRITIC_EXCLUDED]
+CRITIC_TOOL_REGISTRY = {k: v for k, v in TOOL_REGISTRY.items() if k not in _CRITIC_EXCLUDED}
 
 CRITIC_SYSTEM_PROMPT = """\
 You are an adversarial QA engineer. An AI agent has attempted to complete a task.
