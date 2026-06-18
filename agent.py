@@ -3,9 +3,10 @@ import json
 import os
 from openai import AsyncOpenAI
 from tools import TOOL_SCHEMAS, TOOL_REGISTRY
+import token_tracker
 
 MODEL = "deepseek-v4-pro"   # swap to "deepseek-reasoner" for the R1 reasoning model
-MAX_ITERATIONS = 20
+MAX_ITERATIONS = 30
 
 client = AsyncOpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY"),
@@ -77,6 +78,7 @@ async def run_agent(task: str) -> str:
             tool_choice="auto",
             messages=messages,
         )
+        token_tracker.record(MODEL, response.usage)
 
         choice = response.choices[0]
         print(f"Finish reason: {choice.finish_reason}")

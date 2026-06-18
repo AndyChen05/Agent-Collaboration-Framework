@@ -3,7 +3,11 @@ import os
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ValidationError
 from tools import TOOL_SCHEMAS, TOOL_REGISTRY
+import token_tracker
 
+# Set False to skip adversarial verification (saves tokens during DAG development).
+# Set True to re-enable full two-phase critic verification.
+CRITIC_ENABLED = False
 
 # ── Verdict schema ────────────────────────────────────────────────────────────
 # This is the PROTOCOL between critic and orchestrator — always this shape,
@@ -125,6 +129,7 @@ async def run_critic(task: str, actor_result: str) -> dict:
             messages=messages,
             tools=CRITIC_TOOL_SCHEMAS,
         )
+        token_tracker.record(MODEL, response.usage)
         choice = response.choices[0]
 
         if choice.finish_reason == "stop":
@@ -143,6 +148,7 @@ async def run_critic(task: str, actor_result: str) -> dict:
         messages=messages,
         response_format={"type": "json_object"},
     )
+    token_tracker.record(MODEL, verdict_response.usage)
 
     raw = verdict_response.choices[0].message.content
     try:

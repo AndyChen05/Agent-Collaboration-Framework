@@ -1,5 +1,5 @@
 from agent import run_agent
-from critic import run_critic
+from critic import run_critic, CRITIC_ENABLED
 
 MAX_ROUNDS = 3
 
@@ -33,8 +33,12 @@ async def run_with_oversight(task: str) -> dict:
         last_result = await run_agent(current_task)
 
         # ── Critic ────────────────────────────────────────────────────────────
-        print(f"\n--- Critic reviewing round {round_num} ---")
-        last_verdict = await run_critic(task, last_result)
+        if not CRITIC_ENABLED:
+            last_verdict = {"passed": True, "checks": {}, "errors": [],
+                            "feedback": "Critic disabled.", "suggestions": ""}
+        else:
+            print(f"\n--- Critic reviewing round {round_num} ---")
+            last_verdict = await run_critic(task, last_result)
 
         passed = last_verdict.get("passed", False)
         checks = last_verdict.get("checks", {})

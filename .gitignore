@@ -10,3 +10,7 @@ __pycache__/
 hello.py
 calculator.py
 test_calculator.py
+
+# Package and test directories
+text_utils/
+tests/
