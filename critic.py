@@ -1,5 +1,6 @@
 import json
 import os
+import httpx
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ValidationError
 from tools import TOOL_SCHEMAS, TOOL_REGISTRY
@@ -33,6 +34,10 @@ MODEL = "deepseek-chat"
 client = AsyncOpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com",
+    http_client=httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=30.0, read=120.0, write=30.0, pool=10.0),
+        proxy=None,
+    ),
 )
 
 # Critic observes — it must not modify, delete, append, or run arbitrary shell commands

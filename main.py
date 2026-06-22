@@ -13,7 +13,7 @@ from dag_orchestrator import DAGNode, run_dag
 # ── Mode switches ─────────────────────────────────────────────────────────────
 # USE_DAG = False  → sequential orchestrator (one actor loop, then critic)
 # USE_DAG = True   → DAG orchestrator (parallel waves, smaller per-node context)
-USE_DAG = True
+USE_DAG = False
 
 # ── Monolithic task (used when USE_DAG = False) ───────────────────────────────
 TASK = """
