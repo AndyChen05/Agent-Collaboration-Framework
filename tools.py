@@ -220,17 +220,21 @@ async def execute_read_file(inputs: dict) -> str:
 
 
 async def execute_write_file(inputs: dict) -> str:
+    import run_manifest
     path = Path(inputs["path"])
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(inputs["content"], encoding="utf-8")
+    run_manifest.record(path)
     return f"Written {len(inputs['content'])} characters to '{path}'"
 
 
 async def execute_append_to_file(inputs: dict) -> str:
+    import run_manifest
     path = Path(inputs["path"])
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(inputs["content"])
+    run_manifest.record(path)
     return f"Appended {len(inputs['content'])} characters to '{path}'"
 
 
@@ -312,9 +316,10 @@ async def execute_run_shell(inputs: dict) -> str:
     timeout = inputs.get("timeout", 15)
     if not isinstance(command, list) or not command:
         return "Error: 'command' must be a non-empty list of strings"
+    shell_command = " ".join(command)
     try:
-        proc = await asyncio.create_subprocess_exec(
-            *command,
+        proc = await asyncio.create_subprocess_shell(
+            shell_command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -329,8 +334,6 @@ async def execute_run_shell(inputs: dict) -> str:
         return "\n".join(parts) if parts else "(no output)"
     except asyncio.TimeoutError:
         return f"Error: command timed out after {timeout}s"
-    except FileNotFoundError:
-        return f"Error: command not found: '{command[0]}'"
 
 
 async def execute_run_tests(inputs: dict) -> str:

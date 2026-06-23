@@ -1,4 +1,7 @@
+import argparse
 import asyncio
+import shutil
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -6,14 +9,18 @@ from dotenv import load_dotenv
 # because those modules create API clients at module level.
 load_dotenv(Path(__file__).parent / ".env")
 
+import json
+import run_manifest
 import token_tracker
 from orchestrator import run_with_oversight
 from dag_orchestrator import DAGNode, run_dag
 
+MANIFEST_FILE = Path(__file__).parent / ".last_run_manifest.json"
+
 # ── Mode switches ─────────────────────────────────────────────────────────────
 # USE_DAG = False  → sequential orchestrator (one actor loop, then critic)
 # USE_DAG = True   → DAG orchestrator (parallel waves, smaller per-node context)
-USE_DAG = False
+USE_DAG = True
 
 # ── Monolithic task (used when USE_DAG = False) ───────────────────────────────
 TASK = """
@@ -98,6 +105,7 @@ DAG_NODES = [
 
 async def main():
     token_tracker.reset()
+    run_manifest.reset()
 
     if USE_DAG:
         print("\n" + "="*60)
@@ -134,6 +142,65 @@ async def main():
             print(f"Note   : {outcome['note']}")
         print(f"\n--- Actor's final result ---\n{outcome['result']}")
 
+    # Save manifest so --clean knows what to remove next time
+    paths = [str(p) for p in run_manifest.all_paths()]
+    MANIFEST_FILE.write_text(json.dumps(paths, indent=2), encoding="utf-8")
+
+
+def handle_clean() -> None:
+    if not MANIFEST_FILE.exists():
+        print("No manifest found — run the agent at least once first.")
+        sys.exit(0)
+
+    paths = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
+    if not paths:
+        print("Manifest is empty — nothing to delete.")
+        sys.exit(0)
+
+    # Collapse to unique top-level dirs/files so the prompt is readable
+    cwd = Path.cwd()
+    roots: set[Path] = set()
+    for p in paths:
+        try:
+            rel = Path(p).relative_to(cwd)
+            roots.add(cwd / rel.parts[0])
+        except ValueError:
+            roots.add(Path(p))
+
+    existing = sorted(r for r in roots if r.exists())
+    if not existing:
+        print("Nothing to delete — files are already gone.")
+        sys.exit(0)
+
+    print("The following will be permanently deleted:")
+    for r in existing:
+        print(f"  {r.relative_to(cwd)}")
+    answer = input("Confirm delete? [y/N] ").strip().lower()
+    if answer != "y":
+        print("Aborted.")
+        sys.exit(0)
+
+    for r in existing:
+        if r.is_dir():
+            shutil.rmtree(r)
+        else:
+            r.unlink()
+        print(f"  Deleted {r.relative_to(cwd)}")
+    MANIFEST_FILE.unlink(missing_ok=True)
+    print("Done.")
+    sys.exit(0)
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Delete files from the last run (recorded in .last_run_manifest.json).",
+    )
+    args = parser.parse_args()
+
+    if args.clean:
+        handle_clean()
+
     asyncio.run(main())

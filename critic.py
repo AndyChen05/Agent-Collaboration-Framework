@@ -8,7 +8,7 @@ import token_tracker
 
 # Set False to skip adversarial verification (saves tokens during DAG development).
 # Set True to re-enable full two-phase critic verification.
-CRITIC_ENABLED = False
+CRITIC_ENABLED = True
 
 # ── Verdict schema ────────────────────────────────────────────────────────────
 # This is the PROTOCOL between critic and orchestrator — always this shape,
