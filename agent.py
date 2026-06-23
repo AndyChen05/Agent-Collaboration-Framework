@@ -1,10 +1,22 @@
 import asyncio
 import json
 import os
+from pathlib import Path
 import httpx
 from openai import AsyncOpenAI
 from tools import TOOL_SCHEMAS, TOOL_REGISTRY
 import token_tracker
+
+LESSONS_FILE = Path(__file__).parent / "lessons.json"
+
+
+def _load_lessons() -> dict:
+    if LESSONS_FILE.exists():
+        data = json.loads(LESSONS_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return {"permanent": data, "temporary": []}
+        return data
+    return {"permanent": [], "temporary": []}
 
 MODEL = "deepseek-v4-pro"   # swap to "deepseek-reasoner" for the R1 reasoning model
 MAX_ITERATIONS = 30
@@ -66,7 +78,22 @@ async def run_agent(task: str) -> str:
       2. finish_reason == "stop"       → done, return text
       3. finish_reason == "tool_calls" → execute tools, append results, loop
     """
-    messages = [{"role": "user", "content": task}]
+    lessons = _load_lessons()
+    system_content = "You are a precise software engineer. Complete tasks exactly as specified."
+    constraint_lines = []
+    if lessons["permanent"]:
+        constraint_lines.append("Confirmed environment constraints (always follow these):")
+        constraint_lines.extend(f"- {l}" for l in lessons["permanent"])
+    if lessons["temporary"]:
+        constraint_lines.append("Suspected environment constraints (likely true, verify if unsure):")
+        constraint_lines.extend(f"- {l}" for l in lessons["temporary"])
+    if constraint_lines:
+        system_content += "\n\n" + "\n".join(constraint_lines)
+
+    messages = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": task},
+    ]
     iteration = 0
 
     print(f"\n{'='*60}")

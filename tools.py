@@ -283,6 +283,7 @@ async def execute_search_in_file(inputs: dict) -> str:
 
 
 async def execute_run_python(inputs: dict) -> str:
+    import run_log
     code = inputs["code"]
     timeout = inputs.get("timeout", 10)
 
@@ -304,14 +305,18 @@ async def execute_run_python(inputs: dict) -> str:
             parts.append(f"STDERR:\n{stderr.decode('utf-8', errors='replace')}")
         if proc.returncode != 0:
             parts.append(f"Exit code: {proc.returncode}")
+            error_text = "\n".join(parts)
+            run_log.record("run_python", code[:120], error_text[:300])
         return "\n".join(parts) if parts else "(no output)"
     except asyncio.TimeoutError:
+        run_log.record("run_python", code[:120], f"timed out after {timeout}s")
         return f"Error: execution timed out after {timeout}s"
     finally:
         os.unlink(tmp_path)
 
 
 async def execute_run_shell(inputs: dict) -> str:
+    import run_log
     command = inputs["command"]
     timeout = inputs.get("timeout", 15)
     if not isinstance(command, list) or not command:
@@ -331,8 +336,11 @@ async def execute_run_shell(inputs: dict) -> str:
             parts.append(f"STDERR:\n{stderr.decode('utf-8', errors='replace')}")
         if proc.returncode != 0:
             parts.append(f"Exit code: {proc.returncode}")
+            error_text = "\n".join(parts)
+            run_log.record("run_shell", shell_command, error_text[:300])
         return "\n".join(parts) if parts else "(no output)"
     except asyncio.TimeoutError:
+        run_log.record("run_shell", shell_command, f"timed out after {timeout}s")
         return f"Error: command timed out after {timeout}s"
 
 

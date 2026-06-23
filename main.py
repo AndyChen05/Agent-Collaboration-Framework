@@ -10,17 +10,22 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
 
 import json
+import run_log
 import run_manifest
+import reflect
 import token_tracker
 from orchestrator import run_with_oversight
+from meta_orchestrator import run_with_meta_oversight
 from dag_orchestrator import DAGNode, run_dag
 
 MANIFEST_FILE = Path(__file__).parent / ".last_run_manifest.json"
 
 # ── Mode switches ─────────────────────────────────────────────────────────────
-# USE_DAG = False  → sequential orchestrator (one actor loop, then critic)
 # USE_DAG = True   → DAG orchestrator (parallel waves, smaller per-node context)
+# USE_DAG = False, USE_META = True  → meta-orchestrator (LLM decides retry strategy)
+# USE_DAG = False, USE_META = False → plain sequential actor-critic loop
 USE_DAG = True
+USE_META = False
 
 # ── Monolithic task (used when USE_DAG = False) ───────────────────────────────
 TASK = """
@@ -106,6 +111,7 @@ DAG_NODES = [
 async def main():
     token_tracker.reset()
     run_manifest.reset()
+    run_log.reset()
 
     if USE_DAG:
         print("\n" + "="*60)
@@ -125,10 +131,16 @@ async def main():
             print(f"  [{('✓' if passed else '✗')}] {name} ({rounds} round(s))")
 
     else:
-        print("\n" + "="*60)
-        print("  MODE: Sequential orchestration")
-        print("="*60)
-        outcome = await run_with_oversight(TASK)
+        if USE_META:
+            print("\n" + "="*60)
+            print("  MODE: Meta-orchestrator")
+            print("="*60)
+            outcome = await run_with_meta_oversight(TASK)
+        else:
+            print("\n" + "="*60)
+            print("  MODE: Sequential orchestration")
+            print("="*60)
+            outcome = await run_with_oversight(TASK)
         token_tracker.print_summary()
 
         verdict = outcome["verdict"]
@@ -145,6 +157,9 @@ async def main():
     # Save manifest so --clean knows what to remove next time
     paths = [str(p) for p in run_manifest.all_paths()]
     MANIFEST_FILE.write_text(json.dumps(paths, indent=2), encoding="utf-8")
+
+    # Post-run reflection — runs after token summary, so cost report stays clean
+    await reflect.run()
 
 
 def handle_clean() -> None:
