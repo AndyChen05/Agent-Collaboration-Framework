@@ -24,7 +24,7 @@ MANIFEST_FILE = Path(__file__).parent / ".last_run_manifest.json"
 # USE_DAG = True   → DAG orchestrator (parallel waves, smaller per-node context)
 # USE_DAG = False, USE_META = True  → meta-orchestrator (LLM decides retry strategy)
 # USE_DAG = False, USE_META = False → plain sequential actor-critic loop
-USE_DAG = True
+USE_DAG = False
 USE_META = False
 
 # ── Monolithic task (used when USE_DAG = False) ───────────────────────────────
@@ -154,9 +154,13 @@ async def main():
             print(f"Note   : {outcome['note']}")
         print(f"\n--- Actor's final result ---\n{outcome['result']}")
 
-    # Save manifest so --clean knows what to remove next time
-    paths = [str(p) for p in run_manifest.all_paths()]
-    MANIFEST_FILE.write_text(json.dumps(paths, indent=2), encoding="utf-8")
+    # Save manifest so --clean knows what to remove next time.
+    # Merge with existing manifest so files from prior runs aren't lost
+    # (a run that writes nothing would otherwise overwrite with []).
+    existing = json.loads(MANIFEST_FILE.read_text(encoding="utf-8")) if MANIFEST_FILE.exists() else []
+    new_paths = [str(p) for p in run_manifest.all_paths()]
+    merged = sorted(set(existing) | set(new_paths))
+    MANIFEST_FILE.write_text(json.dumps(merged, indent=2), encoding="utf-8")
 
     # Post-run reflection — runs after token summary, so cost report stays clean
     await reflect.run()

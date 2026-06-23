@@ -8,7 +8,7 @@ import token_tracker
 
 # Set False to skip adversarial verification (saves tokens during DAG development).
 # Set True to re-enable full two-phase critic verification.
-CRITIC_ENABLED = True
+CRITIC_ENABLED = False
 
 # ── Verdict schema ────────────────────────────────────────────────────────────
 # This is the PROTOCOL between critic and orchestrator — always this shape,
@@ -29,7 +29,7 @@ class CriticVerdict(BaseModel):
 # Check platform.deepseek.com/api_keys for available model IDs.
 # Known valid IDs: "deepseek-chat" (V3), "deepseek-reasoner" (R1).
 # If "deepseek-v4-pro" exists as a newer model, swap it in here.
-MODEL = "deepseek-chat"
+MODEL = "deepseek-v4-pro"
 
 client = AsyncOpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY"),

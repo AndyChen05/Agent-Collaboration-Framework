@@ -15,6 +15,10 @@ def _load_lessons() -> dict:
         data = json.loads(LESSONS_FILE.read_text(encoding="utf-8"))
         if isinstance(data, list):
             return {"permanent": data, "temporary": []}
+        # migrate temporary from list-of-strings to list-of-dicts
+        temp = data.get("temporary", [])
+        if temp and isinstance(temp[0], str):
+            data["temporary"] = [{"text": t, "runs": 0} for t in temp]
         return data
     return {"permanent": [], "temporary": []}
 
@@ -79,14 +83,15 @@ async def run_agent(task: str) -> str:
       3. finish_reason == "tool_calls" → execute tools, append results, loop
     """
     lessons = _load_lessons()
+    temp_texts = [l["text"] if isinstance(l, dict) else l for l in lessons.get("temporary", [])]
     system_content = "You are a precise software engineer. Complete tasks exactly as specified."
     constraint_lines = []
     if lessons["permanent"]:
         constraint_lines.append("Confirmed environment constraints (always follow these):")
         constraint_lines.extend(f"- {l}" for l in lessons["permanent"])
-    if lessons["temporary"]:
+    if temp_texts:
         constraint_lines.append("Suspected environment constraints (likely true, verify if unsure):")
-        constraint_lines.extend(f"- {l}" for l in lessons["temporary"])
+        constraint_lines.extend(f"- {t}" for t in temp_texts)
     if constraint_lines:
         system_content += "\n\n" + "\n".join(constraint_lines)
 

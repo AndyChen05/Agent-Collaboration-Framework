@@ -1,6 +1,10 @@
 # Secret environment variables
 .env
 
+# Local run artifacts
+.last_run_manifest.json
+Claude response/
+
 # Python cache
 __pycache__/
 *.pyc
@@ -11,6 +15,3 @@ hello.py
 calculator.py
 test_calculator.py
 
-# Package and test directories
-text_utils/
-tests/
