@@ -1,24 +1,14 @@
 {
-  "permanent": [],
+  "permanent": [
+    "When running Python one-liners with -c, use double quotes for the code and avoid spaces after 'import'.",
+    "Use cmd.exe or PowerShell for shell commands; Unix commands like pwd and ls fail on Windows.",
+    "mkdir -p and mkdir fail if directory already exists on Windows; use 'if not exist' or Python os.makedirs.",
+    "Use sys.executable instead of 'python' to invoke Python in subprocess on Windows.",
+    "Avoid relying on shell-builtins; prefer Python code for file operations like removing __pycache__."
+  ],
   "temporary": [
     {
-      "text": "Use cmd.exe or PowerShell for shell commands; Unix commands like pwd and ls fail on Windows.",
-      "runs": 0
-    },
-    {
-      "text": "When running Python one-liners with -c, use double quotes for the code and avoid spaces after 'import'.",
-      "runs": 0
-    },
-    {
-      "text": "mkdir -p and mkdir fail if directory already exists on Windows; use 'if not exist' or Python os.makedirs.",
-      "runs": 0
-    },
-    {
-      "text": "Use sys.executable instead of 'python' to invoke Python in subprocess on Windows.",
-      "runs": 0
-    },
-    {
-      "text": "Avoid relying on shell-builtins; prefer Python code for file operations like removing __pycache__.",
+      "text": "On Windows, printing Unicode characters (e.g., \\u2713) may cause UnicodeEncodeError; avoid non-ASCII in console output.",
       "runs": 0
     }
   ]

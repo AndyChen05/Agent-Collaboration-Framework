@@ -5,6 +5,9 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
 # load_dotenv must run before any agent/critic/orchestrator imports,
 # because those modules create API clients at module level.
 load_dotenv(Path(__file__).parent / ".env")
@@ -19,6 +22,7 @@ from meta_orchestrator import run_with_meta_oversight
 from dag_orchestrator import DAGNode, run_dag
 
 MANIFEST_FILE = Path(__file__).parent / ".last_run_manifest.json"
+TASK_OVERRIDE_FILE = Path(__file__).parent / "task_override.md"
 
 # ── Mode switches ─────────────────────────────────────────────────────────────
 # USE_DAG = True   → DAG orchestrator (parallel waves, smaller per-node context)
@@ -113,6 +117,17 @@ async def main():
     run_manifest.reset()
     run_log.reset()
 
+    # ── Task selection ────────────────────────────────────────────────────────
+    # If task_override.md exists, use it as the active task and delete it after
+    # the run so the default TASK is restored automatically next time.
+    if TASK_OVERRIDE_FILE.exists():
+        active_task = TASK_OVERRIDE_FILE.read_text(encoding="utf-8").strip()
+        print(f"\n[task] Using override: {TASK_OVERRIDE_FILE.name}")
+        task_was_overridden = True
+    else:
+        active_task = TASK
+        task_was_overridden = False
+
     if USE_DAG:
         print("\n" + "="*60)
         print("  MODE: DAG orchestration")
@@ -128,19 +143,19 @@ async def main():
         for name, outcome in results.items():
             passed = outcome.get("verdict", {}).get("passed", False)
             rounds = outcome.get("rounds", "?")
-            print(f"  [{('✓' if passed else '✗')}] {name} ({rounds} round(s))")
+            print(f"  [{'✓' if passed else '✗'}] {name} ({rounds} round(s))")
 
     else:
         if USE_META:
             print("\n" + "="*60)
             print("  MODE: Meta-orchestrator")
             print("="*60)
-            outcome = await run_with_meta_oversight(TASK)
+            outcome = await run_with_meta_oversight(active_task)
         else:
             print("\n" + "="*60)
             print("  MODE: Sequential orchestration")
             print("="*60)
-            outcome = await run_with_oversight(TASK)
+            outcome = await run_with_oversight(active_task)
         token_tracker.print_summary()
 
         verdict = outcome["verdict"]
@@ -153,6 +168,11 @@ async def main():
         if "note" in outcome:
             print(f"Note   : {outcome['note']}")
         print(f"\n--- Actor's final result ---\n{outcome['result']}")
+
+    # Restore default task — delete the override file so next run uses TASK again
+    if task_was_overridden:
+        TASK_OVERRIDE_FILE.unlink()
+        print(f"\n[task] Override consumed — next run will use default TASK")
 
     # Save manifest so --clean knows what to remove next time.
     # Merge with existing manifest so files from prior runs aren't lost

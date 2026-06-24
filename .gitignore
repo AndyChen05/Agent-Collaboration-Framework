@@ -15,3 +15,7 @@ hello.py
 calculator.py
 test_calculator.py
 
+
+# Local package and test artifacts
+text_utils/
+tests/

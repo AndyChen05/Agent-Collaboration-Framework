@@ -36,7 +36,6 @@ client = AsyncOpenAI(
     base_url="https://api.deepseek.com",
     http_client=httpx.AsyncClient(
         timeout=httpx.Timeout(connect=30.0, read=120.0, write=30.0, pool=10.0),
-        proxy=None,
     ),
 )
 
